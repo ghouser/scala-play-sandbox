@@ -1,12 +1,17 @@
 package controllers
-
+// play imports
 import play.api.libs.Files
+import play.api.libs.json.Json
 import play.api.mvc._
-
+// scala and java imports
 import javax.inject._
 import scala.io.{BufferedSource, Source}
-import models.data
-import play.api.libs.json.Json
+import java.io.File
+import java.security.MessageDigest
+import java.math.BigInteger
+// local imports
+import models.Data
+import services.SqlService
 
 @Singleton
 class CsvController @Inject() (val controllerComponents: ControllerComponents)
@@ -20,49 +25,95 @@ extends BaseController {
       tempFile =>
         tempFile.ref.toFile
     }
-    // open file
-    val bufferedSource: BufferedSource = Source.fromFile(file.get)
-    // loop through file to generate an iterator and convert to list
-    val lineIterator:Iterator[String] = for (line <- bufferedSource.getLines) yield line
-    val lines:List[String] = lineIterator.toList
-    // close file
-    bufferedSource.close()
+    // parse file into List of Strings
+    val lines:Option[List[String]] = parseUtils.fileToList(file)
 
-    // Sanity check there are multiple lines
-    if(lines.length < 2) InternalServerError("File is not longer than 1 row")
-    // parse and reply
-    else {
-      val reply = parseUtils.parseRows(lines)
-      Ok(Json.toJson(reply))
+    // confirm file parsed, then continue processing
+    lines match {
+      case None => InternalServerError("File failed to upload and parse")
+      case Some(l) =>
+        // Sanity check there are multiple lines
+        if(l.length < 2) InternalServerError("File is not longer than 1 row")
+        // parse and reply
+        else {
+          val reply = parseUtils.parseRows(l,file.get.toString)
+          val createSQLTable = services.SqlService.createTable(reply.metadata.importName, parseUtils.parseHeader(l) )
+          val insertRows = reply.rows.map(r => services.SqlService.insertRow(reply.metadata.importName, r))
+          if(!createSQLTable) InternalServerError("CSV was parsed but failed to creat import SQL table" + Json.toJson(reply))
+          if(insertRows.contains(false)) InternalServerError("CSV was parsed but all records did not write out to SQL table" + Json.toJson(reply))
+          Ok(Json.toJson(reply))
+        }
     }
+  }
+
+  // pings DB to see if it's connected
+  def checkDB(): Action[AnyContent] = Action { request: Request[AnyContent] =>
+    SqlService.checkDb
+    NoContent
   }
 }
 
 object parseUtils {
+  // TODO write tests for all parseUtils functions
+
+  // TODO remove double quote wrapping
+
+  // makes a GUID based on a string
+  def md5Hash(s: String): String = {
+    val md = MessageDigest.getInstance("MD5")
+    val digest = md.digest(s.getBytes)
+    val bigInt = new BigInteger(1,digest)
+    val hashedString = bigInt.toString(16)
+    hashedString
+  }
+
   // logic to help sanity check files
   val commaRegex = ",(?=([^\"]*\"[^\"]*\")*[^\"]*$)"
+
+  def fileToList (file:Option[File]):Option[List[String]] = {
+    try {
+      val validFile = file.get
+      val bufferedSource: BufferedSource = Source.fromFile(validFile)
+      // loop through file to generate an iterator and convert to list
+      val lineIterator:Iterator[String] = for (line <- bufferedSource.getLines()) yield line
+      // return list
+      Option(lineIterator.toList)
+    } catch {
+      case e: Exception => None
+    }
+  }
 
   def parseHeader (csv: List[String]):List[String] = {
     csv.head.split(commaRegex).map(_.trim).toList
   }
 
-  def parseRows (csv: List[String]):data.Reply = {
+  def parseRows (csv: List[String], fileName:String):Data.Reply = {
     val header = parseHeader(csv)
     val csvIndex = csv.zipWithIndex
+    // create the metadata row
+    // md5hash of filename should be unique temp files are given random names
+    // number of records is csv.length-1 because of header row
+    val metadata = Data.Metadata(md5Hash(fileName),csv.length-1)
+    val emptyReply:Data.Reply = Data.Reply(
+      metadata
+      ,List.empty[Map[String, String]]
+      ,List.empty[Map[String, String]]
+    )
+
     if(header.nonEmpty){
       // tail will skip the first row, fold left creates an accumulator to build output
-      csvIndex.tail.foldLeft(data.Reply(List.empty[Map[String, String]],List.empty[Map[String, String]])) {
+      csvIndex.tail.foldLeft(emptyReply) {
         (acc, cur) => {
           // zip _1 is value _2 is index
           val checkRow = parseRow(cur._1,header.length)
           // if check row is true, add to rows part of reply
-          if (checkRow._2) data.Reply(acc.rows ++ List((header zip checkRow._1).toMap),acc.errors)
+          if (checkRow._2) Data.Reply(metadata,acc.rows ++ List((header zip checkRow._1).toMap),acc.errors)
           // if check row is false, add to errors part of reply
-          else data.Reply(acc.rows,acc.errors ++ List(Map(cur._2.toString -> cur._1)))
+          else Data.Reply(metadata,acc.rows,acc.errors ++ List(Map("row"->cur._2.toString,"value"->cur._1)))
         }
       }
     }
-    else data.Reply(List.empty[Map[String, String]],List.empty[Map[String, String]])
+    else emptyReply
   }
 
   // parses the row, returns a list of string and if row parsed without error
