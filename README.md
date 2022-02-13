@@ -5,8 +5,28 @@ API tool to parse a CSV file from POST call
 - Reply contains parsed data in JSON format (see `Reply Format`)
 - Data is stored in a Postgres SQL Database
 
-## endpoint
-`/parseCsv`
+## Quickstart
+With Docker:
+
+1. `docker-compose up`, this will create:
+    1. `scala-play-sandbox`
+        1. `scala-play-sandbox_sbt_1` - main app
+        1. `scala-play-sandbox_db_1` - postgres sql database
+
+1. SBT will automatically run, starting the server. Expected output:
+    ```
+    --- (Running the application, auto-reloading is enabled) ---
+    
+    [info] p.c.s.AkkaHttpServer - Listening for HTTP on /0.0.0.0:9000
+    ```
+1. Access the server at `http://localhost:9000/`
+1. clean up with `docker-compose down --volumes`
+
+## Endpoints
+### `GET: /checkDB`
+Replies with success if the postgres database is connected and initialized.
+
+###`POST: /parseCsv`
 - header - `Content-Type: multipart/form-data`
 - body - `upload=targetFileContent`
 
@@ -17,9 +37,9 @@ Uploaded file can have any name, but must be called `upload` in the POST body.
 curl -F upload=@simpleTest.csv localhost:9000/parseCsv -H 'Content-Type: multipart/form-data'
 ```
 
-## Accepted Input Formats
+### Accepted Input Formats
 
-## Reply Format
+### Reply Format
 
 ## Unit Tests
 `test/controllers/CsvControllSpec`
@@ -31,6 +51,7 @@ curl -F upload=@simpleTest.csv localhost:9000/parseCsv -H 'Content-Type: multipa
 Calls to parseCSV also write out to a postgres database.
 
 ### Database Setup
+Setup to manually create a postgres database. `docker-compose` 
 1. create a postgres SQL database
     1. Config values (any deviation requires modifying `application.conf` to match)
         ```scala

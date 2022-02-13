@@ -3,8 +3,6 @@ package services
 import scalikejdbc._
 import scalikejdbc.config._
 
-import models.Data
-
 object SqlService {
   DBs.setupAll()
   implicit val session: AutoSession = AutoSession
@@ -14,11 +12,12 @@ object SqlService {
     numImports.head >= 0
   }
 
+  // counts the number of records in the importdata table
   val numImports: Seq[Long] = DB readOnly { implicit session =>
     sql"select count(*) from scala_play_sandbox.importData".map(_.long(1)).list.apply()
   }
 
-  // returns true if table was created
+  // creates a table for the current import and returns true
   def createTable(name:String, columns:List[String]):Boolean = {
     // if not exists to aid in testing
     // name is expected to be a unique hash
@@ -27,7 +26,7 @@ object SqlService {
     sql"CREATE TABLE IF NOT EXISTS scala_play_sandbox.$table ($colList)".execute.apply()
   }
 
-  // insert record into ImportData table
+  // insert a record with the current import name into the ImportData table
   def insertImportData(name:String):Boolean = {
     val inserted = sql"insert into scala_play_sandbox.importdata (filename) values ($name)".update.apply()
     if (inserted == 1) true
@@ -47,6 +46,7 @@ object SqlService {
     val table = SQLSyntax.createUnsafely(name)
     val colList = SQLSyntax.createUnsafely(colRows._1.dropRight(1))
     val valList = SQLSyntax.createUnsafely(colRows._2.dropRight(1))
+    // write row out to table
     sql"INSERT INTO scala_play_sandbox.$table ($colList) VALUES ($valList)".execute.apply()
   }
 
