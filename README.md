@@ -1,5 +1,41 @@
 # Scala Sandbox
 App for experimenting with Scala Play framework.
+## Structure
+```text
+// folders
+app                      → Application sources
+ └ controllers           → Application controllers
+ └ models                → Application data models
+ └ services              → Application services
+ └ views                 → Templates
+conf                     → Configurations files and other non-compiled resources (on classpath)
+ └ application.conf      → Main configuration file
+ └ routes                → Routes definition
+public                   → Public assets
+ └ stylesheets           → CSS files
+ └ javascripts           → Javascript files
+ └ images                → Image files
+project                  → sbt configuration files
+ └ build.properties      → Marker for sbt project
+ └ plugins.sbt           → sbt plugins including the declaration for Play itself
+logs                     → Logs folder
+ └ application.log       → Default log file
+target                   → Generated stuff
+ └ resolution-cache      → Info about dependencies
+ └ scala-2.13
+    └ api                → Generated API docs
+    └ classes            → Compiled class files
+    └ routes             → Sources generated from routes
+    └ twirl              → Sources generated from templates
+ └ universal             → Application packaging
+ └ web                   → Compiled web assets
+test                     → source folder for unit or functional tests
+// files
+build.sbt                → Application build script
+docker-compose.yml       → YML formatted scripts for running run docker
+Dockerfile               → Creates image for application
+init.sql                 → SQL script to initialize Postgres Database
+```
 # Parse CSV
 API tool to parse a CSV file from POST call
 - Reply contains parsed data in JSON format 
