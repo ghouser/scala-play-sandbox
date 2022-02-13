@@ -32,7 +32,7 @@ target                   → Generated stuff
 test                     → source folder for unit or functional tests
 // files
 build.sbt                → Application build script
-docker-compose.yml       → YML formatted scripts for running run docker
+docker-compose.yml       → YML formatted scripts for running docker
 Dockerfile               → Creates image for application
 init.sql                 → SQL script to initialize Postgres Database
 ```
