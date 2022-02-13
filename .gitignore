@@ -2,6 +2,8 @@ logs
 target
 /.bsp
 /.idea
+/.ivy2
+/.sbt
 /.idea_modules
 /.classpath
 /.project

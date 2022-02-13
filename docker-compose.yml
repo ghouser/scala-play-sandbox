@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  sbt:
+    build: .
+    expose:
+      - 9000
+    ports:
+      - 9000:9000
+    links:
+      - db
+    volumes:
+      - .:/scala-play-sandbox
+      - ./.ivy2:/root/.ivy2
+      - ./.sbt:/root/.sbt
+  db:
+    image: postgres:latest
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    expose:
+      - 5432
+    ports:
+      - 5432:5432
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
