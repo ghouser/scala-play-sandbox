@@ -3,11 +3,11 @@ App for experimenting with Scala Play framework.
 # Parse CSV
 API tool to parse a CSV file from POST call
 - Reply contains parsed data in JSON format 
-  - See `Reply Format`
+  - See [Reply Format](https://github.com/ghouser/scala-play-sandbox#reply-format)
   - Data matching tabular structure returned a `"header":"value"` format
   - Data not matching tabular structure returned as raw value
 - Successfully parsed data is stored in a Postgres SQL Database
-  - See ``
+  - See [Postgres Database](https://github.com/ghouser/scala-play-sandbox#postgres-database)
 
 ## Quickstart
 Dependencies:
@@ -76,7 +76,7 @@ internal, double"quote, fails
 
 ### Reply Format
 JSON object:
-```json
+```
 {
 "metadata":{
     "importName":"csv_3039cf951de125a9fb00e92a836c5543",
@@ -142,7 +142,7 @@ Example from above input:
 `test/controllers/CsvControllSpec`
 - Run with sbt shell, `sbt test`
 - Unit test coverage for all `CsvController.parseUtils` functions
-- Tests cover data handling as described in `Accepted Input Formats`
+- Tests cover data handling as described in [Accepted Input Formats](https://github.com/ghouser/scala-play-sandbox#accepted-input-formats)
 - File matching above example can be found at `test/resources/quoteTest.csv`
 
 ## Postgres Database
