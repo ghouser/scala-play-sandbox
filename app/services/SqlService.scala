@@ -8,8 +8,15 @@ import models.Data
 object SqlService {
   DBs.setupAll()
   implicit val session: AutoSession = AutoSession
-  // TODO build this out a bit to serve as a sanity check the connection exists
-  val checkDb: Seq[Map[String, Any]] = sql"SELECT count(1) FROM scala_play_sandbox.importdata".map(_.toMap()).list().apply()
+
+  // sanity check the DB is connected
+  def checkDb():Boolean = {
+    numImports.head >= 0
+  }
+
+  val numImports: Seq[Long] = DB readOnly { implicit session =>
+    sql"select count(*) from scala_play_sandbox.importData".map(_.long(1)).list.apply()
+  }
 
   // returns true if table was created
   def createTable(name:String, columns:List[String]):Boolean = {
@@ -20,7 +27,12 @@ object SqlService {
     sql"CREATE TABLE IF NOT EXISTS scala_play_sandbox.$table ($colList)".execute.apply()
   }
 
-  // TODO make function to populate importData table
+  // insert record into ImportData table
+  def insertImportData(name:String):Boolean = {
+    val inserted = sql"insert into scala_play_sandbox.importdata (filename) values ($name)".update.apply()
+    if (inserted == 1) true
+    else false
+  }
 
   // returns true if data was inserted
   def insertRow(name:String, row:Map[String, String]):Boolean = {

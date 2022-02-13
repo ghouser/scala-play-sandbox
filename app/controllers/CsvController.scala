@@ -37,10 +37,12 @@ extends BaseController {
         // parse and reply
         else {
           val reply = parseUtils.parseRows(l,file.get.toString)
-          val createSQLTable = services.SqlService.createTable(reply.metadata.importName, parseUtils.parseHeader(l) )
+          val insertImportData = services.SqlService.insertImportData(reply.metadata.importName)
+          val createSQLTable = services.SqlService.createTable(reply.metadata.importName, parseUtils.parseHeader(l))
           val insertRows = reply.rows.map(r => services.SqlService.insertRow(reply.metadata.importName, r))
           if(!createSQLTable) InternalServerError("CSV was parsed but failed to creat import SQL table" + Json.toJson(reply))
           if(insertRows.contains(false)) InternalServerError("CSV was parsed but all records did not write out to SQL table" + Json.toJson(reply))
+          if(!insertImportData) InternalServerError("CSV was parsed but run was not recorded in importData table" + Json.toJson(reply))
           Ok(Json.toJson(reply))
         }
     }
@@ -48,28 +50,26 @@ extends BaseController {
 
   // pings DB to see if it's connected
   def checkDB(): Action[AnyContent] = Action { request: Request[AnyContent] =>
-    SqlService.checkDb
-    NoContent
+    if (SqlService.checkDb()) Ok("Confirmed connection to SQL Database")
+    else InternalServerError("Not Connected to SQL Database")
   }
 }
 
 object parseUtils {
-  // TODO write tests for all parseUtils functions
-
-  // TODO remove double quote wrapping
-
   // makes a GUID based on a string
   def md5Hash(s: String): String = {
     val md = MessageDigest.getInstance("MD5")
     val digest = md.digest(s.getBytes)
     val bigInt = new BigInteger(1,digest)
     val hashedString = bigInt.toString(16)
-    hashedString
+    s"csv_$hashedString"
   }
 
   // logic to help sanity check files
   val commaRegex = ",(?=([^\"]*\"[^\"]*\")*[^\"]*$)"
+  val quoteRegex = "^\\\"|\\\"$"
 
+  // opens file and converts to List[String]
   def fileToList (file:Option[File]):Option[List[String]] = {
     try {
       val validFile = file.get
@@ -83,8 +83,24 @@ object parseUtils {
     }
   }
 
+  def stringFilter (s:String):List[String] = {
+    // split the row, trim each element, convert to list, replace double quote wrapping
+    s.split(commaRegex).map(_.trim).toList.map(_.replaceAll(quoteRegex,""))
+  }
+
+  // takes the List[String] and parses the first row to create the header
   def parseHeader (csv: List[String]):List[String] = {
-    csv.head.split(commaRegex).map(_.trim).toList
+    stringFilter(csv.head)
+  }
+
+  // parses the row, returns a list of string and if row parsed without error
+  def parseRow (row: String, length: Int):(List[String],Boolean) = {
+    val rowList = stringFilter(row)
+    // if rowList is not the expected length, return false
+    if (rowList.length != length){
+      (rowList,false)
+    }
+    else (rowList,true)
   }
 
   def parseRows (csv: List[String], fileName:String):Data.Reply = {
@@ -114,16 +130,6 @@ object parseUtils {
       }
     }
     else emptyReply
-  }
-
-  // parses the row, returns a list of string and if row parsed without error
-  def parseRow (row: String, length: Int):(List[String],Boolean) = {
-    val rowList = row.split(commaRegex).map(_.trim).toList
-    // if rowList is not the expected length, return false
-    if (rowList.length != length){
-      (rowList,false)
-    }
-    else (rowList,true)
   }
 
 }
