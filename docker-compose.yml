@@ -3,6 +3,8 @@ version: '3.8'
 services:
   sbt:
     build: .
+    environment:
+      - DATABASE_URL=jdbc:postgresql://db:5432/postgres
     expose:
       - 9000
     ports:

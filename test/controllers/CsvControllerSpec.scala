@@ -14,8 +14,8 @@ class CsvControllerSpec extends PlaySpec {
       list mustBe expected
     }
     "parse a string into a List[String] by splitting on comma and accounting for double quoted strings" in {
-      val list = parseUtils.stringFilter("test,\"test,test\",t\"es\"t")
-      val expected = List("test","test,test","t\"es\"t")
+      val list = parseUtils.stringFilter("test,\"test,test\",t\"es\"t,\"t\"es\"t\"")
+      val expected = List("test","test,test","t\"es\"t","t\"es\"t")
       list mustBe expected
     }
     "parse the first row from a List[String] to find the header row" in {
